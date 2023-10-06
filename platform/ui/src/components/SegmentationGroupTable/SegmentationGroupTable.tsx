@@ -71,7 +71,7 @@ const SegmentationGroupTable = ({
   );
 
   return (
-    <div className="flex min-h-0 flex-col bg-black text-[13px] font-[300]">
+    <div className="flex min-h-0 flex-col bg-black font-[500]">
       <PanelSection
         title="Segmentation"
         actionIcons={

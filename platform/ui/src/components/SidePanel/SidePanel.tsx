@@ -131,6 +131,60 @@ const getTabIconClassNames = (numTabs: number, isActiveTab: boolean) => {
 };
 
 const SidePanel = ({ side, className, activeTabIndex: activeTabIndexProp, tabs, onOpen }) => {
+  const borderSize = 4;
+  const expandedWidthLeft = 220;
+  const expandedWidthRight = 500;
+
+  const collapsedHideWidthLeft = expandedWidthLeft - 25 - borderSize;
+  const collapsedHideWidthRight = expandedWidthRight - 25 - borderSize;
+
+  const baseStyle = {
+    maxWidth: `${side === 'left' ? expandedWidthLeft : expandedWidthRight}px`,
+    width: `${side === 'left' ? expandedWidthLeft : expandedWidthRight}px`,
+  };
+  const styleMap = {
+    open: {
+      left: { marginLeft: '0px' },
+      right: { marginRight: '0px' },
+    },
+    closed: {
+      left: {
+        marginLeft: `-${side === 'left' ? collapsedHideWidthLeft : collapsedHideWidthRight}px`,
+      },
+      right: {
+        marginRight: `-${side === 'left' ? collapsedHideWidthLeft : collapsedHideWidthRight}px`,
+      },
+    },
+  };
+
+  const baseClasses =
+    'transition-all duration-300 ease-in-out h-100 bg-black border-black justify-start box-content flex flex-col';
+
+  const classesMap = {
+    open: {
+      left: 'mr-1',
+      right: 'ml-1',
+    },
+    closed: {
+      left: 'mr-2 items-end',
+      right: 'ml-2 items-start',
+    },
+  };
+
+  const openStateIconName = {
+    left: 'push-left',
+    right: 'push-right',
+  };
+
+  const position = {
+    left: {
+      right: '5px',
+    },
+    right: {
+      left: '5px',
+    },
+  };
+
   const { t } = useTranslation('SidePanel');
 
   const [panelOpen, setPanelOpen] = useState(activeTabIndexProp !== null);
@@ -184,7 +238,7 @@ const SidePanel = ({ side, className, activeTabIndex: activeTabIndexProp, tabs, 
             className={classnames('text-primary-active', side === 'left' && 'rotate-180 transform')}
           />
         </div>
-        <div className={classnames('mt-3 flex flex-col space-y-3')}>
+        {/* <div className={classnames('mt-3 flex flex-col space-y-3')}>
           {_childComponents.map((childComponent, index) => (
             <Tooltip
               position={side === 'left' ? 'right' : 'left'}
@@ -214,7 +268,7 @@ const SidePanel = ({ side, className, activeTabIndex: activeTabIndexProp, tabs, 
               </div>
             </Tooltip>
           ))}
-        </div>
+        </div> */}
       </>
     );
   };
@@ -249,43 +303,7 @@ const SidePanel = ({ side, className, activeTabIndex: activeTabIndexProp, tabs, 
           className={classnames('bg-primary-dark text-primary-active flex flex-wrap')}
           style={getGridStyle(side, tabs.length)}
         >
-          {tabs.map((tab, tabIndex) => {
-            return (
-              <React.Fragment key={tabIndex}>
-                {tabIndex % numCols !== 0 && (
-                  <div
-                    className={classnames(
-                      'flex h-[28px] w-[2px] items-center bg-black',
-                      tabSpacerWidth
-                    )}
-                  >
-                    <div className="bg-primary-dark h-[20px] w-full"></div>
-                  </div>
-                )}
-                <Tooltip
-                  position={'bottom'}
-                  key={tabIndex}
-                  content={`${tab.label}`}
-                >
-                  <div
-                    className={getTabClassNames(
-                      numCols,
-                      tabs.length,
-                      tabIndex,
-                      tabIndex === activeTabIndex
-                    )}
-                    style={getTabStyle(tabs.length)}
-                    onClick={() => updateActiveTabIndex(tabIndex)}
-                    data-cy={`${tab.name}-btn`}
-                  >
-                    <div className={getTabIconClassNames(tabs.length, tabIndex === activeTabIndex)}>
-                      <Icon name={tab.iconName}></Icon>
-                    </div>
-                  </div>
-                </Tooltip>
-              </React.Fragment>
-            );
-          })}
+          <span className="select-none">Report</span>
         </div>
       </div>
     );
