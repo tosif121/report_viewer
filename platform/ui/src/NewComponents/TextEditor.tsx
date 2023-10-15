@@ -16,7 +16,6 @@ const TextEditor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [reports, setReports] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const [getUploadImages, setGetUploadImages] = useState([]);
 
   const url = window.location.href;
   const urlParams = new URLSearchParams(url.split('?')[1]);
@@ -67,6 +66,29 @@ const TextEditor: React.FC = () => {
     });
   }, []);
 
+  const drText = `Please correlate clinically and with related investigations; it may be more informative.
+  This report is based on digital DICOM images provided via the internet without identification
+  of the patient, not on the films / plates provided to the patient.
+  WISH YOU A SPEEDY RECOVERY
+  Thanks for Referral
+  Disclaimer:-It is an online interpretation of medical imaging based on clinical data. All modern
+  machines/procedures have their own limitation. If there is any clinical discrepancy, this investigation may be
+  repeated or reassessed by other tests. Patient's identification in online reporting is not established, so in no
+  way this report can be utilized for any medico legal purpose. In case of any discrepancy due to typing error
+  or machinery error please get it rectified immediately.
+`;
+
+  const img = `
+    <img
+      src="${tableData.signUrl}"
+      alt="Medical Image"
+    />
+  `;
+
+  const drDetails = `${tableData?.drName?.name}
+MD (Radio-Diagnosis)
+${tableData?.drName?.compony}`;
+
   useEffect(() => {
     if (selectedItem) {
       const selectedReport = reports.find(
@@ -81,7 +103,8 @@ const TextEditor: React.FC = () => {
 
          IMPRESSION:
             ${selectedReport.content.IMPRESSION}
-        `;
+
+            `;
         setText(initialText);
       }
     } else {
@@ -90,87 +113,104 @@ const TextEditor: React.FC = () => {
   }, [selectedItem, reports]);
 
   useEffect(() => {
-    setPreviewText(text);
+    setPreviewText(text + drText + img + drDetails);
   }, [text]);
 
+  const LINE_SPACING = 10;
+  const IMG_WIDTH = 50;
+
   const handleSave = async () => {
-    if (text && selectedItem) {
-      const doc = new jsPDF();
-      // Add the table data to the PDF
-      doc.setFontSize(12);
-      const table = [
-        ['Patient ID', 'Patient Name', 'Date', 'Location', 'Ref Doctor'],
-        [
-          tableData.patientID,
-          tableData.name,
-          formattedDate,
-          tableData.location,
-          tableData.ReferringPhysicianName,
-        ],
-      ];
+    if (!text || !selectedItem) {
+      console.warn('Cannot generate PDF without text or selected report');
+      return;
+    }
 
-      const tableStyles = {
-        tableWidth: 'auto',
-        theme: 'grid',
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: 0,
-          fontStyle: 'bold',
-          halign: 'center',
+    const doc = new jsPDF();
+    doc.setFontSize(12);
+
+    const table = [
+      ['Patient ID', 'Patient Name', 'Date', 'Location', 'Ref Doctor'],
+      [
+        tableData.patientID,
+        tableData.name,
+        formattedDate,
+        tableData.location,
+        tableData.ReferringPhysicianName,
+      ],
+    ];
+
+    const tableStyles = {
+      tableWidth: 'auto',
+      theme: 'grid',
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: 0,
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: 0,
+        halign: 'center',
+      },
+    };
+
+    autoTable(doc, { body: table }, tableStyles);
+
+    const textDr = text + drText;
+    const lines = textDr.split('\n');
+
+    let yPos = 50;
+
+    lines.forEach(line => {
+      doc.text(10, yPos, line);
+      yPos += LINE_SPACING;
+
+      if (yPos + LINE_SPACING > doc.internal.pageSize.height) {
+        doc.addPage();
+        yPos = 10;
+      }
+    });
+
+    if (tableData.signUrl) {
+      const imgHeight = 50;
+      const imgX = 10;
+      const imgY = yPos + 10;
+
+      doc.addImage(tableData.signUrl, 'JPEG', imgX, imgY, IMG_WIDTH, imgHeight);
+      yPos = imgY + imgHeight + LINE_SPACING;
+
+      const drDetails = `${tableData?.drName?.name}\nMD (Radio-Diagnosis)\n${tableData?.drName?.compony}`;
+      doc.text(10, yPos, drDetails);
+      yPos += LINE_SPACING * 3;
+    }
+
+    const reportName = selectedItem.label.replace(/ /g, '_');
+    const pdfFileName = `${reportName}.pdf`;
+    const formData = new FormData();
+    const blob = doc.output('blob');
+
+    formData.append('file', blob, pdfFileName);
+
+    const endPoint = 'http://dev.iotcom.io:5500/upload/report';
+
+    try {
+      const responseImage = await axios.post(`${endPoint}/?id=${tableData.id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
-        bodyStyles: {
-          fillColor: [255, 255, 255],
-          textColor: 0,
-          halign: 'center',
-        },
-      };
-
-      autoTable(doc, { body: table }, tableStyles);
-
-      const lines = text.split('\n');
-
-      const lineHeight = 10;
-      let yPos = 50;
-
-      lines.forEach(line => {
-        doc.text(10, yPos, line);
-        yPos += lineHeight;
-
-        if (yPos + lineHeight > doc.internal.pageSize.height) {
-          doc.addPage();
-          yPos = 10;
-        }
       });
 
-      const reportName = selectedItem.label.replace(/ /g, '_');
-      const pdfFileName = `${reportName}.pdf`;
-      const formData = new FormData();
-      const blob = doc.output('blob');
-
-      formData.append('file', blob, pdfFileName);
-
-      const endPoint = 'http://dev.iotcom.io:5500/upload/report';
-
-      try {
-        const responseImage = await axios.post(`${endPoint}/?id=${tableData.id}`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        if (responseImage.data.success) {
-          console.log('File uploaded successfully');
-        } else {
-          console.error('File upload failed');
-        }
-      } catch (error) {
-        console.error('Error during file upload:', error);
+      if (responseImage.data.success) {
+        console.log('File uploaded successfully');
+      } else {
+        console.error('File upload failed');
       }
-
-      doc.save(pdfFileName);
-    } else {
-      console.warn('Cannot generate PDF without text or selected report');
+    } catch (error) {
+      console.error('Error during file upload:', error);
     }
+
+    doc.save(pdfFileName);
   };
 
   const handleView = () => {
@@ -198,7 +238,7 @@ const TextEditor: React.FC = () => {
   };
 
   const formattedDate = moment(tableData.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
-
+  console.log(tableData, 'tableData');
   return (
     <div className="p-1">
       <table className="mb-3 min-w-full border text-center text-sm font-light text-white">
