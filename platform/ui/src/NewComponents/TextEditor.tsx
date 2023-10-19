@@ -5,6 +5,8 @@ import axios from 'axios';
 import moment from 'moment';
 import { getDataFromServer, postDatatoServer } from '../utils/services';
 import autoTable from 'jspdf-autotable';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const TextEditor: React.FC = () => {
   const [text, setText] = useState<string>('');
@@ -16,6 +18,12 @@ const TextEditor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [reports, setReports] = useState([]);
   const [tableData, setTableData] = useState([]);
+  const [previewHtml, setPreviewHtml] = useState('');
+
+  const handleEditorChange = html => {
+    setText(html);
+    setPreviewHtml(html);
+  };
 
   const url = window.location.href;
   const urlParams = new URLSearchParams(url.split('?')[1]);
@@ -210,7 +218,15 @@ ${tableData?.drName?.compony}`;
       console.error('Error during file upload:', error);
     }
 
-    doc.save(pdfFileName);
+    const contentElement = document.createElement('div');
+    contentElement.innerHTML = previewHtml;
+
+    // Convert the HTML content to PDF using the separate jsPDF instance
+    doc.html(contentElement, {
+      callback: function (pdf) {
+        pdf.save(pdfFileName); // Save the HTML content as a PDF
+      },
+    });
   };
 
   const handleView = () => {
@@ -238,7 +254,7 @@ ${tableData?.drName?.compony}`;
   };
 
   const formattedDate = moment(tableData.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
-  console.log(tableData, 'tableData');
+
   return (
     <div className="p-1">
       <table className="mb-3 min-w-full border text-center text-sm font-light text-white">
@@ -298,18 +314,20 @@ ${tableData?.drName?.compony}`;
         Selected Report: {selectedItem ? selectedItem.label : ''}
       </p>
 
-      <textarea
-        contentEditable={!selectedItem ? false : true}
-        className={`${
-          selectedItem
-            ? 'text-primary-dark mb-2 w-full rounded border-2 p-2 focus:border-blue-500 focus:outline-none'
-            : 'mr-6 w-full rounded bg-gray-300 px-4 py-2 text-white'
-        }`}
-        style={{ minHeight: '65vh', whiteSpace: 'pre-line' }}
-        value={text}
-        onChange={e => setText(e.target.value)}
-        disabled={!selectedItem}
-      ></textarea>
+      <div className="editor-container bg-white">
+        <ReactQuill
+          className={`${
+            selectedItem
+              ? 'text-primary-dark border-1 mb-2 w-full rounded focus:border-blue-500 focus:outline-none'
+              : 'mr-6 w-full rounded bg-gray-300 text-white'
+          }`}
+          style={{ minHeight: '65vh', whiteSpace: 'pre-line' }}
+          value={text}
+          disabled={!selectedItem}
+          onChange={handleEditorChange}
+          modules={{ toolbar: [['bold', 'italic', 'underline', 'list']] }}
+        />
+      </div>
 
       <div className="mt-1 flex">
         <button
@@ -385,7 +403,11 @@ ${tableData?.drName?.compony}`;
             <div
               className="overflow-y-auto whitespace-pre-line rounded border-2 p-2 focus:border-blue-500 focus:outline-none"
               dangerouslySetInnerHTML={{
-                __html: previewText || 'No preview available',
+                __html: `
+                  <div style="font-size: 14px;">
+                    ${previewHtml || 'No preview available'}
+                  </div>
+                `,
               }}
               style={{
                 width: '1000px',
