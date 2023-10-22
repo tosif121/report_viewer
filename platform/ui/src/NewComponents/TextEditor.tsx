@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactSelect from 'react-select';
 import jsPDF from 'jspdf';
 import axios from 'axios';
 import moment from 'moment';
 import { getDataFromServer, postDatatoServer } from '../utils/services';
 import autoTable from 'jspdf-autotable';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 
 const TextEditor: React.FC = () => {
   const [text, setText] = useState<string>('');
@@ -18,12 +16,6 @@ const TextEditor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [reports, setReports] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const [previewHtml, setPreviewHtml] = useState('');
-
-  const handleEditorChange = html => {
-    setText(html);
-    setPreviewHtml(html);
-  };
 
   const url = window.location.href;
   const urlParams = new URLSearchParams(url.split('?')[1]);
@@ -217,16 +209,6 @@ ${tableData?.drName?.compony}`;
     } catch (error) {
       console.error('Error during file upload:', error);
     }
-
-    const contentElement = document.createElement('div');
-    contentElement.innerHTML = previewHtml;
-
-    // Convert the HTML content to PDF using the separate jsPDF instance
-    doc.html(contentElement, {
-      callback: function (pdf) {
-        pdf.save(pdfFileName); // Save the HTML content as a PDF
-      },
-    });
   };
 
   const handleView = () => {
@@ -254,6 +236,23 @@ ${tableData?.drName?.compony}`;
   };
 
   const formattedDate = moment(tableData.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
+
+  const textareaRef = useRef(null);
+
+  const handleBold = () => {
+    const textarea = textareaRef.current;
+    const { selectionStart, selectionEnd } = textarea;
+    const selectedText = text.substring(selectionStart, selectionEnd);
+
+    if (selectionStart !== selectionEnd) {
+      const boldText = `<b>${selectedText}</b>`;
+      const newText = `${text.substring(0, selectionStart)}${boldText}${text.substring(
+        selectionEnd
+      )}`;
+      setText(newText);
+      textarea.focus();
+    }
+  };
 
   return (
     <div className="p-1">
@@ -309,25 +308,30 @@ ${tableData?.drName?.compony}`;
         placeholder="Select a report"
         isSearchable={true}
       />
-
-      <p className="mb-2 text-blue-500">
+      <p className="mb-1 text-blue-500">
         Selected Report: {selectedItem ? selectedItem.label : ''}
       </p>
 
-      <div className="editor-container bg-white">
-        <ReactQuill
-          className={`${
-            selectedItem
-              ? 'text-primary-dark border-1 mb-2 w-full rounded focus:border-blue-500 focus:outline-none'
-              : 'mr-6 w-full rounded bg-gray-300 text-white'
-          }`}
-          style={{ minHeight: '65vh', whiteSpace: 'pre-line' }}
-          value={text}
-          disabled={!selectedItem}
-          onChange={handleEditorChange}
-          modules={{ toolbar: [['bold', 'italic', 'underline', 'list']] }}
-        />
-      </div>
+      <button
+        onClick={handleBold}
+        className="mb-1 border border-blue-500 px-2 text-blue-600"
+      >
+        B
+      </button>
+
+      <textarea
+        ref={textareaRef}
+        contentEditable={!selectedItem ? false : true}
+        className={`${
+          selectedItem
+            ? 'text-primary-dark w-full rounded border-2 p-2 focus:border-blue-500 focus:outline-none'
+            : 'mr-6 w-full rounded bg-gray-300 px-4 py-2 text-white'
+        }`}
+        style={{ minHeight: '60vh', whiteSpace: 'pre-line' }}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        disabled={!selectedItem}
+      ></textarea>
 
       <div className="mt-1 flex">
         <button
@@ -405,7 +409,7 @@ ${tableData?.drName?.compony}`;
               dangerouslySetInnerHTML={{
                 __html: `
                   <div style="font-size: 14px;">
-                    ${previewHtml || 'No preview available'}
+                    ${previewText || 'No preview available'}
                   </div>
                 `,
               }}
