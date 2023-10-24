@@ -65,7 +65,7 @@ function Header({
         <div className="flex items-center">{children}</div>
         <div className="flex items-center">
           <span className="text-common-light mr-3 text-lg">{t('SUPRAVI')}</span>
-          <Dropdown
+          {/* <Dropdown
             id="options"
             showDropdownIcon={false}
             list={menuOptions}
@@ -89,7 +89,7 @@ function Header({
             >
               <Icon name="chevron-down" />
             </IconButton>
-          </Dropdown>
+          </Dropdown> */}
         </div>
       </div>
     </NavBar>

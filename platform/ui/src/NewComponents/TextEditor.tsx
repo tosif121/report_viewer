@@ -5,6 +5,8 @@ import axios from 'axios';
 import moment from 'moment';
 import { getDataFromServer, postDatatoServer } from '../utils/services';
 import autoTable from 'jspdf-autotable';
+import * as docx from 'docx';
+import { saveAs } from 'file-saver';
 
 const TextEditor: React.FC = () => {
   const [text, setText] = useState<string>('');
@@ -16,6 +18,24 @@ const TextEditor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [reports, setReports] = useState([]);
   const [tableData, setTableData] = useState([]);
+  const [selectedText, setSelectedText] = useState('');
+
+  const handleTextChange = e => {
+    setText(e.target.value);
+  };
+
+  const handleSelectionChange = () => {
+    const selectedText = window.getSelection().toString();
+    setSelectedText(selectedText);
+  };
+
+  const makeSelectedTextBold = () => {
+    if (selectedText) {
+      const boldText = `<b>${selectedText}</b>`;
+      const newText = text.replace(selectedText, boldText);
+      setText(newText);
+    }
+  };
 
   const url = window.location.href;
   const urlParams = new URLSearchParams(url.split('?')[1]);
@@ -66,16 +86,21 @@ const TextEditor: React.FC = () => {
     });
   }, []);
 
-  const drText = `Please correlate clinically and with related investigations; it may be more informative.
-  This report is based on digital DICOM images provided via the internet without identification
-  of the patient, not on the films / plates provided to the patient.
-  WISH YOU A SPEEDY RECOVERY
-  Thanks for Referral
-  Disclaimer:-It is an online interpretation of medical imaging based on clinical data. All modern
-  machines/procedures have their own limitation. If there is any clinical discrepancy, this investigation may be
-  repeated or reassessed by other tests. Patient's identification in online reporting is not established, so in no
-  way this report can be utilized for any medico legal purpose. In case of any discrepancy due to typing error
-  or machinery error please get it rectified immediately.
+  const drText = `
+  <em>Please correlate clinically and with related investigations; it may be more informative.</em>
+  `;
+
+  const reportText = `
+  <b><em>This report is based on digital DICOM images provided via the internet without identification of the patient,<u> not on the films / plates provided to the patient.</u> </em></b>
+  `;
+
+  const wishText = `
+                                                                      <em> WISH YOU A SPEEDY RECOVERY
+                                                                      Thanks for Referral</em>
+
+`;
+
+  const disclaimerText = `Disclaimer:-It is an online interpretation of medical imaging based on clinical data. All modern machines/procedures have their own limitation. If there is any clinical discrepancy, this investigation may be repeated or reassessed by other tests. Patient's identification in online reporting is not established, so in no way this report can be utilized for any medico legal purpose. In case of any discrepancy due to typing error or machinery error please get it rectified immediately.
 `;
 
   const img = `
@@ -85,9 +110,11 @@ const TextEditor: React.FC = () => {
     />
   `;
 
-  const drDetails = `${tableData?.drName?.name}
-MD (Radio-Diagnosis)
-${tableData?.drName?.compony}`;
+  const drDetails = `
+  <b>${tableData?.drName?.name}
+  MD (Radio-Diagnosis)
+  ${tableData?.drName?.compony} </b>
+        `;
 
   useEffect(() => {
     if (selectedItem) {
@@ -113,7 +140,7 @@ ${tableData?.drName?.compony}`;
   }, [selectedItem, reports]);
 
   useEffect(() => {
-    setPreviewText(text + drText + img + drDetails);
+    setPreviewText(text + drText + reportText + wishText + disclaimerText + img + drDetails);
   }, [text]);
 
   const LINE_SPACING = 10;
@@ -237,20 +264,98 @@ ${tableData?.drName?.compony}`;
 
   const formattedDate = moment(tableData.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
 
-  const textareaRef = useRef(null);
+  const generate = () => {
+    const cleanedText = text.replace(/<b>/g, '').replace(/<\/b>/g, '');
+    const cleanedDrText = drText.replace(/<em>/g, '').replace(/<\/em>/g, '');
+    const cleanedReportText = reportText.replace(/<[^>]*>/g, '');
+    const cleanedWishText = wishText.replace(/<em>/g, '').replace(/<\/em>/g, '');
+    const cleaneDrDetails = drDetails.replace(/<b>/g, '').replace(/<\/b>/g, '');
 
-  const handleBold = () => {
-    const textarea = textareaRef.current;
-    const { selectionStart, selectionEnd } = textarea;
-    const selectedText = text.substring(selectionStart, selectionEnd);
-
-    if (selectionStart !== selectionEnd) {
-      const boldText = `<b>${selectedText}</b>`;
-      const newText = `${text.substring(0, selectionStart)}${boldText}${text.substring(
-        selectionEnd
-      )}`;
-      setText(newText);
-      textarea.focus();
+    if (selectedText) {
+      const doc = new docx.Document({
+        sections: [
+          {
+            properties: {},
+            children: [
+              new docx.TextRun({
+                text: cleanedText.split(selectedText)[0],
+              }),
+              new docx.TextRun({
+                text: selectedText,
+                bold: true,
+              }),
+              new docx.TextRun({
+                text: cleanedText.split(selectedText)[1],
+              }),
+              new docx.TextRun({
+                text: cleanedDrText,
+                italics: true,
+              }),
+              new docx.TextRun({
+                text: cleanedReportText,
+                bold: true,
+                italics: true,
+              }),
+              new docx.TextRun({
+                text: cleanedWishText,
+                italics: true,
+              }),
+              new docx.TextRun({
+                text: disclaimerText,
+              }),
+              new docx.TextRun({
+                text: cleaneDrDetails,
+                bold: true,
+              }),
+            ],
+          },
+        ],
+      });
+      docx.Packer.toBlob(doc).then(blob => {
+        saveAs(blob, 'report.docx');
+        console.log('Document created successfully');
+      });
+    } else {
+      const doc = new docx.Document({
+        sections: [
+          {
+            properties: {},
+            children: [
+              new docx.Paragraph({
+                children: [
+                  new docx.TextRun({
+                    text: text,
+                  }),
+                  new docx.TextRun({
+                    text: cleanedDrText,
+                    italics: true,
+                  }),
+                  new docx.TextRun({
+                    text: cleanedReportText,
+                    bold: true,
+                    italics: true,
+                  }),
+                  new docx.TextRun({
+                    text: cleanedWishText,
+                    italics: true,
+                  }),
+                  new docx.TextRun({
+                    text: disclaimerText,
+                  }),
+                  new docx.TextRun({
+                    text: cleaneDrDetails,
+                    bold: true,
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
+      });
+      docx.Packer.toBlob(doc).then(blob => {
+        saveAs(blob, 'report.docx');
+        console.log('Document created successfully');
+      });
     }
   };
 
@@ -313,14 +418,15 @@ ${tableData?.drName?.compony}`;
       </p>
 
       <button
-        onClick={handleBold}
-        className="mb-1 border border-blue-500 px-2 text-blue-600"
+        onClick={makeSelectedTextBold}
+        className="mb-1 border border-blue-500 px-2 text-blue-600 hover:bg-blue-600 hover:text-white"
       >
         B
       </button>
 
       <textarea
-        ref={textareaRef}
+        onChange={handleTextChange}
+        onSelect={handleSelectionChange}
         contentEditable={!selectedItem ? false : true}
         className={`${
           selectedItem
@@ -329,9 +435,8 @@ ${tableData?.drName?.compony}`;
         }`}
         style={{ minHeight: '60vh', whiteSpace: 'pre-line' }}
         value={text}
-        onChange={e => setText(e.target.value)}
         disabled={!selectedItem}
-      ></textarea>
+      />
 
       <div className="mt-1 flex">
         <button
@@ -345,7 +450,7 @@ ${tableData?.drName?.compony}`;
         </button>
         <button
           disabled={!text || !selectedItem}
-          onClick={handleSave}
+          onClick={generate}
           className={`${
             text ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300'
           } mr-6 w-full rounded px-4 py-2 text-white`}
