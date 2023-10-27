@@ -359,6 +359,61 @@ const TextEditor: React.FC = () => {
     }
   };
 
+  const [exportContent, setExportContent] = useState('');
+  const textAreaRef = useRef(null);
+
+  function handleExportContentChange(event) {
+    setExportContent(event.target.value);
+  }
+
+  function handleSelectTextAndBold() {
+    // Get the current textarea selection range.
+    const textArea = textAreaRef.current;
+    const selectedText = exportContent.substring(textArea.selectionStart, textArea.selectionEnd);
+
+    // Apply bold formatting to the selected text.
+    const updatedContent = exportContent.replace(selectedText, `<strong>${selectedText}</strong>`);
+
+    setExportContent(updatedContent);
+  }
+
+  function Export2Doc(content, filename = 'document') {
+    // Replace newline characters with <br /> for line breaks.
+    const contentWithLineBreaks = content.replace(/\n/g, '<br />');
+
+    const htmlTemplate = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Export HTML To Doc</title>
+        </head>
+        <body>
+          ${contentWithLineBreaks}
+        </body>
+      </html>`;
+
+    const blob = new Blob(['\ufeff', htmlTemplate], {
+      type: 'application/msword',
+    });
+
+    const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(htmlTemplate);
+
+    filename = filename ? `${filename}.docx` : 'document.docx';
+
+    const downloadLink = document.createElement('a');
+    document.body.appendChild(downloadLink);
+
+    if (navigator.msSaveOrOpenBlob) {
+      navigator.msSaveOrOpenBlob(blob, filename);
+    } else {
+      downloadLink.href = url;
+      downloadLink.download = filename;
+      downloadLink.click();
+    }
+
+    document.body.removeChild(downloadLink);
+  }
+
   return (
     <div className="p-1">
       <table className="mb-3 min-w-full border text-center text-sm font-light text-white">
@@ -418,13 +473,13 @@ const TextEditor: React.FC = () => {
       </p>
 
       <button
-        onClick={makeSelectedTextBold}
+        onClick={handleSelectTextAndBold}
         className="mb-1 border border-blue-500 px-2 text-blue-600 hover:bg-blue-600 hover:text-white"
       >
         B
       </button>
 
-      <textarea
+      {/* <textarea
         onChange={handleTextChange}
         onSelect={handleSelectionChange}
         contentEditable={!selectedItem ? false : true}
@@ -436,8 +491,21 @@ const TextEditor: React.FC = () => {
         style={{ minHeight: '60vh', whiteSpace: 'pre-line' }}
         value={text}
         disabled={!selectedItem}
-      />
+      /> */}
 
+      <textarea
+        ref={textAreaRef}
+        value={exportContent}
+        onChange={handleExportContentChange}
+        contentEditable={!selectedItem ? false : true}
+        className={`${
+          selectedItem
+            ? 'text-primary-dark w-full rounded border-2 p-2 focus:border-blue-500 focus:outline-none'
+            : 'mr-6 w-full rounded bg-gray-300 px-4 py-2 text-white'
+        }`}
+        style={{ minHeight: '60vh', whiteSpace: 'pre-line' }}
+        disabled={!selectedItem}
+      ></textarea>
       <div className="mt-1 flex">
         <button
           onClick={handleView}
@@ -449,8 +517,8 @@ const TextEditor: React.FC = () => {
           View
         </button>
         <button
+          onClick={() => Export2Doc(exportContent, 'exportedDocument')}
           disabled={!text || !selectedItem}
-          onClick={generate}
           className={`${
             text ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300'
           } mr-6 w-full rounded px-4 py-2 text-white`}
