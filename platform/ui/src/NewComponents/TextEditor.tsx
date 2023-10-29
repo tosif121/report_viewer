@@ -20,6 +20,8 @@ const TextEditor: React.FC = () => {
   const [tableData, setTableData] = useState([]);
   const [previewHtml, setPreviewHtml] = useState('');
 
+  const formattedDate = moment(tableData?.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
+
   const quillRef = useRef(null);
 
   useEffect(() => {
@@ -114,28 +116,64 @@ const TextEditor: React.FC = () => {
     });
   }, []);
 
-  const drText = `Please correlate clinically and with related investigations; it may be more informative.
-  This report is based on digital DICOM images provided via the internet without identification
-  of the patient, not on the films / plates provided to the patient.
-  WISH YOU A SPEEDY RECOVERY
-  Thanks for Referral
-  Disclaimer:-It is an online interpretation of medical imaging based on clinical data. All modern
-  machines/procedures have their own limitation. If there is any clinical discrepancy, this investigation may be
-  repeated or reassessed by other tests. Patient's identification in online reporting is not established, so in no
-  way this report can be utilized for any medico legal purpose. In case of any discrepancy due to typing error
-  or machinery error please get it rectified immediately.
+  const drText = `
+  <em>Please correlate clinically and with related investigations; it may be more informative.</em> <br/>
+  <br/>
+  `;
+
+  const reportText = `
+  <b><em>This report is based on digital DICOM images provided via the internet without identification of the patient,<u> not on the films / plates provided to the patient.</u> </em></b>
+  <br/>
+  <br/>
+  `;
+
+  const wishText = `
+  <em> WISH YOU A SPEEDY RECOVERY
+   Thanks for Referral</em>
+   <br/>
+   `;
+
+  const disclaimerText = `Disclaimer:-It is an online interpretation of medical imaging based on clinical data. All modern machines/procedures have their own limitation. If there is any clinical discrepancy, this investigation may be repeated or reassessed by other tests. Patient's identification in online reporting is not established, so in no way this report can be utilized for any medico legal purpose. In case of any discrepancy due to typing error or machinery error please get it rectified immediately.
+
 `;
 
-  const img = `
+  const imgDr = `
     <img
       src="${tableData.signUrl}"
       alt="Medical Image"
     />
   `;
 
-  const drDetails = `${tableData?.drName?.name}
+  const drDetails = `<b>${tableData?.drName?.name}
 MD (Radio-Diagnosis)
-${tableData?.drName?.compony}`;
+${tableData?.drName?.compony}</b>`;
+
+  const tableHtml = `<table style="border-collapse: collapse; width: 100%; border: 1px solid #000;">
+  <thead>
+    <tr>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Patient ID</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Patient Name</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Date</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Location</th>
+      <th style="border: 1px solid #000; padding: 8px; text-align: center;">Ref Doctor</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+        ${tableData.patientID}
+      </td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">${tableData.name}</td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">${formattedDate}</td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+        ${tableData.location}
+      </td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+        ${tableData.ReferringPhysicianName}
+      </td>
+    </tr>
+  </tbody>
+</table>`;
 
   useEffect(() => {
     if (selectedItem) {
@@ -153,7 +191,7 @@ ${tableData?.drName?.compony}`;
             ${selectedReport.content.IMPRESSION}
 
             `;
-        setText(initialText);
+        setText(initialText + drText + reportText + wishText + disclaimerText + drDetails);
       }
     } else {
       setText('');
@@ -184,11 +222,9 @@ ${tableData?.drName?.compony}`;
     setSelectedItem(selectedOption);
   };
 
-  const formattedDate = moment(tableData.Date, 'D/M/YYYY, h:mm:ss a').format('DD-MMMM-YYYY');
-
   return (
     <div className="p-1">
-      <table className="mb-3 min-w-full border text-center text-sm font-light text-white">
+      <table className="mb-1 min-w-full border text-center text-sm font-light text-white">
         <thead className="border-b font-medium">
           <tr>
             <th
@@ -241,9 +277,7 @@ ${tableData?.drName?.compony}`;
         isSearchable={true}
       />
 
-      <p className="my-1 text-blue-500">
-        Selected Report: {selectedItem ? selectedItem.label : ''}
-      </p>
+      <p className="text-blue-500">Selected Report: {selectedItem ? selectedItem.label : ''}</p>
 
       <div className="bg-white">
         <ReactQuill
@@ -285,52 +319,6 @@ ${tableData?.drName?.compony}`;
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="overflow-auto rounded bg-white p-4">
             <h2 className="mb-2 text-lg font-semibold">Preview:</h2>
-            <table className="text-dark mb-3 min-w-full border text-center text-sm font-light">
-              <thead className="border-b font-medium">
-                <tr>
-                  <th
-                    scope="col"
-                    className="border-r"
-                  >
-                    Patient ID
-                  </th>
-                  <th
-                    scope="col"
-                    className="border-r"
-                  >
-                    Patient Name
-                  </th>
-                  <th
-                    scope="col"
-                    className="border-r"
-                  >
-                    Date
-                  </th>
-                  <th
-                    scope="col"
-                    className="border-r"
-                  >
-                    Location
-                  </th>
-                  <th
-                    scope="col"
-                    className="border-r"
-                  >
-                    Ref Doctor
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b font-medium">
-                  <td className="border-r">{tableData.patientID}</td>
-                  <td className="border-r">{tableData.name}</td>
-                  <td className="border-r">{formattedDate}</td>
-                  <td className="border-r">{tableData.location}</td>
-                  <td className="border-r">{tableData.ReferringPhysicianName}</td>
-                </tr>
-              </tbody>
-            </table>
-
             <div
               className="overflow-y-auto whitespace-pre-line rounded border-2 p-2 focus:border-blue-500 focus:outline-none"
               dangerouslySetInnerHTML={{
